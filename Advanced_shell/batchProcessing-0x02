@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# batchProcessing-0x02
+# Fetch data for multiple Pokémon and save to separate files
+# Handles rate limiting by adding a delay between requests.
+
+# List of Pokémon to fetch
+pokemons=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+# Create output directory if it doesn't exist
+mkdir -p pokemon_data
+
+# Loop through Pokémon list
+for pkmn in "${pokemons[@]}"; do
+    echo "Fetching data for $pkmn..."
+    
+    # Fetch and save data
+    if curl -sS "https://pokeapi.co/api/v2/pokemon/$pkmn" -o "pokemon_data/${pkmn}.json"; then
+        echo "Saved data to pokemon_data/${pkmn}.json ✅"
+    else
+        echo "Failed to fetch $pkmn ❌"
+    fi
+    
+    # Delay to avoid hitting rate limits
+    sleep 2
+done
