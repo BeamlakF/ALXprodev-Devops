@@ -1,25 +1,44 @@
 #!/usr/bin/env bash
 # batchProcessing-0x02
-# Fetch data for multiple Pokémon and save to separate files
-# Handles rate limiting by adding a delay between requests.
+# Fetch multiple Pokémon data with retry and error logging.
 
-# List of Pokémon to fetch
 pokemons=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+outdir="pokemon_data"
+errlog="errors.txt"
 
-# Create output directory if it doesn't exist
-mkdir -p pokemon_data
+mkdir -p "$outdir"
 
-# Loop through Pokémon list
 for pkmn in "${pokemons[@]}"; do
-    echo "Fetching data for $pkmn..."
+  echo "Fetching data for $pkmn..."
+
+  success=0
+  attempts=0
+  max_attempts=3
+
+  while [ $attempts -lt $max_attempts ]; do
+    ((attempts++))
     
-    # Fetch and save data
-    if curl -sS "https://pokeapi.co/api/v2/pokemon/$pkmn" -o "pokemon_data/${pkmn}.json"; then
-        echo "Saved data to pokemon_data/${pkmn}.json ✅"
+    if curl -sS "https://pokeapi.co/api/v2/pokemon/$pkmn" -o "$outdir/${pkmn}.json"; then
+      # Check if response is valid JSON by checking for "name" key (simple check)
+      if grep -q '"name"' "$outdir/${pkmn}.json"; then
+        echo "Saved data to $outdir/${pkmn}.json ✅"
+        success=1
+        break
+      else
+        echo "Invalid response for $pkmn (attempt $attempts)"
+      fi
     else
-        echo "Failed to fetch $pkmn ❌"
+      echo "Request failed for $pkmn (attempt $attempts)"
     fi
-    
-    # Delay to avoid hitting rate limits
+
     sleep 2
+  done
+
+  if [ $success -eq 0 ]; then
+    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") | ERROR: Failed to fetch $pkmn after $max_attempts attempts" >> "$errlog"
+    echo "Failed to fetch $pkmn ❌ (logged error)"
+  fi
+
+  # Delay to avoid rate limiting after each Pokémon (even after success)
+  sleep 2
 done
