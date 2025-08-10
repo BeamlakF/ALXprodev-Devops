@@ -33,6 +33,6 @@ for pkmn in "${pokemons[@]}"; do
 done
 
 # Wait for all background jobs to finish
-wait
+kill
 
 echo "All fetches completed."
