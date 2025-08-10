@@ -1,18 +1,12 @@
 #!/usr/bin/env bash
 # data_extraction_automation-0x01
-# Extract Pokémon name, type, weight, and height from data.json using cat/grep/sed/awk.
+# Extract Pokémon data from data.json using jq, awk, and sed
 
-# Make sure file exists
-if [ ! -f data.json ]; then
-    echo "Error: data.json not found. Run Task 0 first."
-    exit 1
-fi
+# Extract fields with jq
+name=$(jq -r '.name' data.json | sed 's/.*/\u&/')
+type=$(jq -r '.types[0].type.name' data.json | sed 's/.*/\u&/')
+formatted_weight=$(jq -r '.weight' data.json | awk '{print $1/10}' | sed 's/\.0$//')
+formatted_height=$(jq -r '.height' data.json | awk '{print $1/10}')
 
-# Extract and format values
-name=$(cat data.json | grep -m 1 '"name":' | head -n 1 | sed 's/.*"name": "\(.*\)",/\1/' | sed 's/.*/\u&/')
-type=$(cat data.json | grep -A1 '"types"' | grep '"name":' | head -n 1 | sed 's/.*"name": "\(.*\)".*/\1/' | sed 's/.*/\u&/')
-weight=$(cat data.json | grep '"weight":' | head -n 1 | sed 's/[^0-9]//g' | awk '{printf "%.1f", $1/10}')
-height=$(cat data.json | grep '"height":' | head -n 1 | sed 's/[^0-9]//g' | awk '{printf "%.1f", $1/10}')
-
-# Output
-echo "$name is of type $type, weighs ${weight}kg, and is ${height}m tall."
+# Output in exact required format
+echo "$name is of type $type, weighs ${formatted_weight}kg, and is ${formatted_height}m tall."
