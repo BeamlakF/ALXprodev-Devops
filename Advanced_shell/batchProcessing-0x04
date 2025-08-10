@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# batchProcessing-0x04
+# Fetch multiple Pokémon data in parallel with background processes.
+
+pokemons=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+outdir="pokemon_data"
+errlog="errors.txt"
+
+mkdir -p "$outdir"
+> "$errlog"  # Clear error log
+
+fetch_pokemon() {
+  local pkmn=$1
+  echo "Fetching data for $pkmn..."
+
+  if curl -sS "https://pokeapi.co/api/v2/pokemon/$pkmn" -o "$outdir/${pkmn}.json"; then
+    # Validate response contains "name"
+    if grep -q '"name"' "$outdir/${pkmn}.json"; then
+      echo "Saved data to $outdir/${pkmn}.json ✅"
+    else
+      echo "Invalid response for $pkmn" 
+      echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") | ERROR: Invalid response for $pkmn" >> "$errlog"
+    fi
+  else
+    echo "Failed to fetch $pkmn"
+    echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") | ERROR: Failed to fetch $pkmn" >> "$errlog"
+  fi
+}
+
+# Run all fetches in parallel in the background
+for pkmn in "${pokemons[@]}"; do
+  fetch_pokemon "$pkmn" &
+done
+
+# Wait for all background jobs to finish
+wait
+
+echo "All fetches completed."
