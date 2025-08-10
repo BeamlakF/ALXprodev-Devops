@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# apiAutomation-0x00
+# Fetch Pikachu data from the PokéAPI and save to data.json.
+# On failure, append error details to errors.txt.
+
+set -u
+URL="https://pokeapi.co/api/v2/pokemon/pikachu"
+OUT="data.json"
+ERR="errors.txt"
+
+# Ensure curl exists
+if ! command -v curl >/dev/null 2>&1; then
+  echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") | ERROR: curl not installed" >> "$ERR"
+  echo "ERROR: curl is required but not installed. See $ERR"
+  exit 2
+fi
+
+# Create a temp file for the response body
+TMP="$(mktemp)" || { echo "Failed to create temp file"; exit 3; }
+cleanup() { rm -f "$TMP"; }
+trap cleanup EXIT
+
+# Make the request: save body to TMP, capture HTTP status in HTTP_CODE
+if ! HTTP_CODE=$(curl -sS -w "%{http_code}" -o "$TMP" "$URL"); then
+  # network / curl-level failure
+  echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") | CURL_ERROR | URL=$URL" >> "$ERR"
+  echo "Request failed (network/curl). See $ERR"
+  exit 4
+fi
+
+# Check HTTP status (2xx = success)
+if [[ "$HTTP_CODE" =~ ^2 ]]; then
+  mv "$TMP" "$OUT"
+  echo "Success: saved response to $OUT"
+  exit 0
+else
+  # limit body excerpt to avoid huge logs (first 2000 chars)
+  BODY_EXCERPT=$(head -c 2000 "$TMP" | tr '\n' ' ' | sed 's/  */ /g')
+  printf '%s | HTTP_%s | URL=%s | BODY_EXCERPT=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$HTTP_CODE" "$URL" "$BODY_EXCERPT" >> "$ERR"
+  echo "Request failed (HTTP $HTTP_CODE). See $ERR"
+  exit 5
+fi
